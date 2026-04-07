@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "paperscout"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "anthropic>=0.28.0",
+    "arxiv>=2.1.0",
+    "click>=8.1.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+paperscout = "paperscout.cli:cli"
+
+[tool.setuptools.package-data]
+paperscout = ["prompts/*.md", "skills/*/SKILL.md"]
