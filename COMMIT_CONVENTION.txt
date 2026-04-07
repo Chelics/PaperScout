@@ -1,0 +1,40 @@
+Commit Message Convention (PaperScout)
+
+Language
+- Write all commit messages in English.
+
+Format
+- First line (subject):
+  [TYPE] Imperative, present-tense summary (no trailing period)
+- Optional blank line, then body bullets (recommended for fixes/refactors).
+
+Allowed TYPE values
+- [FIX]      Bug fix
+- [FEAT]     New user-facing functionality
+- [REFACTOR] Code change that neither fixes a bug nor adds a feature
+- [PERF]     Performance improvement
+- [TEST]     Tests only
+- [CHORE]    Maintenance (deps, tooling, cleanup)
+- [DOCS]     Documentation only
+- [BUILD]    Build system or packaging
+- [CI]       CI configuration
+
+Rules
+- Do not include directory/module scope in the subject line.
+- Keep the subject under ~72 characters when practical.
+- Use an imperative verb: "Fix", "Add", "Refactor", "Remove", "Improve", "Align".
+- Body (if present) should answer: what changed, why, and how verified.
+
+Examples
+- [FIX] Resolve ~ paths for report and bibtex output
+- [FEAT] Add trending mode enforcement for recency-sorted queries
+- [REFACTOR] Simplify arXiv result compaction pipeline
+
+Body example
+[FIX] Resolve ~ paths for report and bibtex output
+
+- Expand and resolve --output/--bibtex paths before writing to avoid creating ./~/*
+- Ensure parent directories exist for both report and bibtex outputs
+- Improve PermissionError message to show the actual target path
+- Align bibtex parameter type with Click (str | None)
+- Verified via compileall and path resolution sanity check
