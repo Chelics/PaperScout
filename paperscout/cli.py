@@ -79,6 +79,12 @@ def _ensure_unique_path(path: Path) -> Path:
     return parent / f"{stem}_{sha1(str(path).encode('utf-8')).hexdigest()[:8]}{suffix}"
 
 
+def _resolve_output_path(output: str, topic: str) -> Path:
+    if output == _AUTO_OUT:
+        return _ensure_unique_path(_default_report_path(topic)).expanduser().resolve()
+    return Path(output).expanduser().resolve()
+
+
 @click.group()
 def cli():
     """PaperScout - Search and analyze academic papers from arXiv."""
@@ -145,7 +151,7 @@ def search(
     topic: str,
     limit: int,
     output: str,
-    bibtex: str,
+    bibtex: str | None,
     max_iterations: int,
     cost_summary: bool,
     report_mode: str,
@@ -166,6 +172,8 @@ def search(
 
     click.echo(f"Searching arXiv for: {topic!r} (limit={limit})", err=True)
 
+    output_path_obj: Path | None = None
+    bib_path_obj: Path | None = None
     try:
         from .agent import run_agent
         from .report import normalize_report_markdown, write_bibtex, write_report
@@ -180,24 +188,23 @@ def search(
         )
         report = normalize_report_markdown(report, report_mode=report_mode)
 
-        output_path = output
-        if output == _AUTO_OUT:
-            output_path = str(_ensure_unique_path(_default_report_path(topic)))
-
-        Path(output_path).expanduser().resolve().parent.mkdir(parents=True, exist_ok=True)
-        write_report(report, output_path)
-        click.echo(f"Report written to: {output_path}", err=True)
+        output_path_obj = _resolve_output_path(output, topic)
+        output_path_obj.parent.mkdir(parents=True, exist_ok=True)
+        write_report(report, str(output_path_obj))
+        click.echo(f"Report written to: {output_path_obj}", err=True)
 
         if bibtex is not None:
-            bib_path = str(Path(output_path).with_suffix(".bib")) if bibtex == _AUTO_BIB else bibtex
-            write_bibtex(papers, bib_path)
-            click.echo(f"BibTeX written to: {bib_path}", err=True)
+            bib_path_obj = output_path_obj.with_suffix(".bib") if bibtex == _AUTO_BIB else Path(bibtex).expanduser().resolve()
+            bib_path_obj.parent.mkdir(parents=True, exist_ok=True)
+            write_bibtex(papers, str(bib_path_obj))
+            click.echo(f"BibTeX written to: {bib_path_obj}", err=True)
 
         if cost_summary:
             click.echo(_format_cost_summary(stats), err=True)
 
     except PermissionError:
-        click.echo(f"Error: Cannot write to '{output}'. Check file permissions.", err=True)
+        target = bib_path_obj or output_path_obj or Path(output).expanduser()
+        click.echo(f"Error: Cannot write to '{target}'. Check file permissions.", err=True)
         sys.exit(1)
     except RuntimeError as e:
         click.echo(f"Error: {e}", err=True)
