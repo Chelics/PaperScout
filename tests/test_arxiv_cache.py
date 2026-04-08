@@ -13,10 +13,23 @@ from paperscout.tools import arxiv as arxiv_module
 
 
 @pytest.fixture(autouse=True)
-def clear_cache():
+def clear_all_caches(tmp_path, monkeypatch):
+    monkeypatch.setenv("PAPERSCOUT_ENABLE_DB_CACHE", "1")
+    monkeypatch.setenv("PAPERSCOUT_DB_PATH", str(tmp_path / "test_cache.db"))
     arxiv_module._arxiv_result_cache.clear()
+    import paperscout.cache as cache_module
+    cache_module._connection = None
+    try:
+        cache_module.purge_expired()
+    except Exception:
+        pass
     yield
     arxiv_module._arxiv_result_cache.clear()
+    cache_module._connection = None
+    try:
+        cache_module.purge_expired()
+    except Exception:
+        pass
 
 
 class _Author:

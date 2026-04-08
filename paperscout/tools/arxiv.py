@@ -129,6 +129,30 @@ def _cache_key(query: str, sort_by: str) -> str:
     return f"{query.strip()}::{sort_by}"
 
 
+def _normalize_arxiv_id(url_or_id: str) -> str:
+    import re
+    m = re.search(r"abs/([0-9]+\.[0-9]+)", url_or_id)
+    if m:
+        return m.group(1)
+    m = re.search(r"([0-9]+\.[0-9]+)", url_or_id)
+    if m:
+        return m.group(1)
+    return url_or_id.strip()
+
+
+def _build_paper_dict(paper) -> dict:
+    return {
+        "title": paper.title,
+        "authors": [a.name for a in paper.authors[:5]],
+        "published": paper.published.strftime("%Y-%m-%d"),
+        "updated": paper.updated.strftime("%Y-%m-%d"),
+        "arxiv_url": paper.entry_id,
+        "abstract": paper.summary[:800],
+        "primary_category": paper.primary_category,
+        "categories": paper.categories[:3],
+    }
+
+
 def _prepare_output_results(base_results: list[dict], venue_match: Any, max_results: int) -> list[dict]:
     sliced = base_results[:max_results]
     out: list[dict] = [dict(p) for p in sliced]
@@ -157,14 +181,26 @@ def _execute(tool_input: dict) -> str:
             pass
 
     key = _cache_key(query, sort_by)
-    if cache_enabled and key in _arxiv_result_cache:
-        cached_results, cached_total = _arxiv_result_cache[key]
-        cached_len = len(cached_results)
-        if cached_len == 0:
-            return json.dumps({"results": [], "total_found": 0, "message": "No papers found.", "cached": True})
-        if cached_len >= max_results:
-            out_results = _prepare_output_results(cached_results, _venue_match, max_results)
-            return json.dumps({"results": out_results, "total_found": cached_total if cached_total else cached_len, "cached": True})
+    if cache_enabled:
+        from paperscout import cache as db_cache
+        cached_search = db_cache.get_cached_search(key)
+        if cached_search is not None:
+            arxiv_ids, cached_total = cached_search
+            cached_len = len(arxiv_ids)
+            if cached_len > 0:
+                all_papers = db_cache.get_papers(arxiv_ids)
+                if cached_len >= max_results and len(all_papers) == cached_len:
+                    paper_dicts = [all_papers[aid] for aid in arxiv_ids[:max_results] if aid in all_papers]
+                    out_results = _prepare_output_results(paper_dicts, _venue_match, max_results)
+                    return json.dumps({"results": out_results, "total_found": cached_total if cached_total else cached_len, "cached": True})
+                if cached_len < max_results:
+                    fetch_missing = True
+                else:
+                    fetch_missing = len(all_papers) < cached_len
+                if not fetch_missing:
+                    paper_dicts = [all_papers[aid] for aid in arxiv_ids[:max_results] if aid in all_papers]
+                    out_results = _prepare_output_results(paper_dicts, _venue_match, max_results)
+                    return json.dumps({"results": out_results, "total_found": cached_total if cached_total else cached_len, "cached": True})
 
     last_error: Exception | None = None
     for attempt in range(max_retries + 1):
@@ -177,28 +213,22 @@ def _execute(tool_input: dict) -> str:
             )
             results = []
             for paper in client.results(search):
-                paper_dict = {
-                    "title": paper.title,
-                    "authors": [a.name for a in paper.authors[:5]],
-                    "published": paper.published.strftime("%Y-%m-%d"),
-                    "updated": paper.updated.strftime("%Y-%m-%d"),
-                    "arxiv_url": paper.entry_id,
-                    "abstract": paper.summary[:800],
-                    "primary_category": paper.primary_category,
-                    "categories": paper.categories[:3],
-                }
-                results.append(paper_dict)
+                results.append(_build_paper_dict(paper))
 
             if not results:
                 if cache_enabled:
                     _arxiv_result_cache[key] = ([], None)
+                    db_cache.set_cached_search(key, [], 0)
                 return json.dumps({
                     "results": [],
                     "message": f"No papers found for query: '{query}'. Try different keywords.",
                 })
 
+            arxiv_ids = [_normalize_arxiv_id(p["arxiv_url"]) for p in results]
             if cache_enabled:
                 _arxiv_result_cache[key] = (results, len(results))
+                db_cache.set_cached_search(key, arxiv_ids, len(results))
+                db_cache.set_papers(results)
             out_results = _prepare_output_results(results, _venue_match, max_results)
             return json.dumps({"results": out_results, "total_found": len(results)})
 
