@@ -1,0 +1,235 @@
+{
+  "version": "1.0",
+  "venues": [
+    {
+      "name": "Conference on Computer Vision and Pattern Recognition",
+      "short_name": "CVPR",
+      "alias": ["IEEE/CVF Conference on Computer Vision and Pattern Recognition"],
+      "ccf_level": "A",
+      "category": "CV",
+      "homepage": "https://cvpr.thecvf.com/",
+      "publisher": "IEEE/CVF",
+      "keywords": ["computer vision", "pattern recognition", "image understanding", "object detection", "segmentation"]
+    },
+    {
+      "name": "International Conference on Computer Vision",
+      "short_name": "ICCV",
+      "alias": ["IEEE International Conference on Computer Vision"],
+      "ccf_level": "A",
+      "category": "CV",
+      "homepage": "https://iccv2025.thecvf.com/",
+      "publisher": "IEEE",
+      "keywords": ["computer vision", "image understanding", "3D vision", "video understanding"]
+    },
+    {
+      "name": "European Conference on Computer Vision",
+      "short_name": "ECCV",
+      "alias": ["ECCV"],
+      "ccf_level": "B",
+      "category": "CV",
+      "homepage": "https://eccv.ecva.net/",
+      "publisher": "Springer",
+      "keywords": ["computer vision", "image analysis", "visual learning"]
+    },
+    {
+      "name": "Neural Information Processing Systems",
+      "short_name": "NeurIPS",
+      "alias": ["NIPS", "NeurIPS"],
+      "ccf_level": "A",
+      "category": "AI",
+      "homepage": "https://neurips.cc/",
+      "publisher": "Curran Associates",
+      "keywords": ["machine learning", "neural networks", "deep learning", "reinforcement learning", "optimization", "theory"]
+    },
+    {
+      "name": "International Conference on Machine Learning",
+      "short_name": "ICML",
+      "alias": ["ICML"],
+      "ccf_level": "A",
+      "category": "AI",
+      "homepage": "https://icml.cc/",
+      "publisher": "PMLR",
+      "keywords": ["machine learning", "statistical learning", "optimization", "theory"]
+    },
+    {
+      "name": "International Conference on Learning Representations",
+      "short_name": "ICLR",
+      "alias": ["ICLR"],
+      "ccf_level": "A",
+      "category": "AI",
+      "homepage": "https://iclr.cc/",
+      "publisher": "OpenReview",
+      "keywords": ["deep learning", "representation learning", "neural networks", "generative models"]
+    },
+    {
+      "name": "International Joint Conference on Artificial Intelligence",
+      "short_name": "IJCAI",
+      "alias": ["IJCAI"],
+      "ccf_level": "B",
+      "category": "AI",
+      "homepage": "https://ijcai-24.org/",
+      "publisher": "IJCAI",
+      "keywords": ["artificial intelligence", "knowledge representation", "reasoning", "planning"]
+    },
+    {
+      "name": "AAAI Conference on Artificial Intelligence",
+      "short_name": "AAAI",
+      "alias": ["AAAI"],
+      "ccf_level": "A",
+      "category": "AI",
+      "homepage": "https://aaai.org/conference/aaai/",
+      "publisher": "AAAI",
+      "keywords": ["artificial intelligence", "reasoning", "planning", "knowledge representation", "agent"]
+    },
+    {
+      "name": "Annual Meeting of the Association for Computational Linguistics",
+      "short_name": "ACL",
+      "alias": ["ACL"],
+      "ccf_level": "A",
+      "category": "NLP",
+      "homepage": "https://2025.aclweb.org/",
+      "publisher": "ACL",
+      "keywords": ["computational linguistics", "natural language processing", "machine translation", "summarization", "information extraction"]
+    },
+    {
+      "name": "Empirical Methods in Natural Language Processing",
+      "short_name": "EMNLP",
+      "alias": ["EMNLP"],
+      "ccf_level": "A",
+      "category": "NLP",
+      "homepage": "https://2025.emnlp.org/",
+      "publisher": "ACL",
+      "keywords": ["natural language processing", "computational linguistics", "machine learning", "text mining"]
+    },
+    {
+      "name": "North American Chapter of the Association for Computational Linguistics",
+      "short_name": "NAACL",
+      "alias": ["NAACL", "NAACL-HLT"],
+      "ccf_level": "B",
+      "category": "NLP",
+      "homepage": "https://naacl.org/",
+      "publisher": "ACL",
+      "keywords": ["natural language processing", "computational linguistics", "language understanding"]
+    },
+    {
+      "name": "COLING - International Conference on Computational Linguistics",
+      "short_name": "COLING",
+      "alias": ["COLING"],
+      "ccf_level": "B",
+      "category": "NLP",
+      "homepage": "https://coling2025.org/",
+      "publisher": "ACL",
+      "keywords": ["computational linguistics", "natural language processing", "dialogue systems"]
+    },
+    {
+      "name": "International Conference on Robotics and Automation",
+      "short_name": "ICRA",
+      "alias": ["ICRA"],
+      "ccf_level": "B",
+      "category": "RO",
+      "homepage": "https://www.icra2025.org/",
+      "publisher": "IEEE",
+      "keywords": ["robotics", "automation", "control", "manipulation", "navigation"]
+    },
+    {
+      "name": "International Conference on Software Engineering",
+      "short_name": "ICSE",
+      "alias": ["ICSE"],
+      "ccf_level": "A",
+      "category": "SE",
+      "homepage": "https://conferences.computer.org/icse/",
+      "publisher": "IEEE/ACM",
+      "keywords": ["software engineering", "program analysis", "testing", "verification"]
+    },
+    {
+      "name": "SIGMOD International Conference on Management of Data",
+      "short_name": "SIGMOD",
+      "alias": ["SIGMOD"],
+      "ccf_level": "A",
+      "category": "DB",
+      "homepage": "https://sigmod2025.org/",
+      "publisher": "ACM",
+      "keywords": ["databases", "data management", "query processing", "data mining"]
+    },
+    {
+      "name": "International Conference on Very Large Data Bases",
+      "short_name": "VLDB",
+      "alias": ["VLDB"],
+      "ccf_level": "A",
+      "category": "DB",
+      "homepage": "https://www.vldb.org/",
+      "publisher": "VLDB Endowment",
+      "keywords": ["databases", "data management", "big data", "data warehousing"]
+    },
+    {
+      "name": "SIGKDD Conference on Knowledge Discovery and Data Mining",
+      "short_name": "KDD",
+      "alias": ["KDD"],
+      "ccf_level": "A",
+      "category": "DM",
+      "homepage": "https://kdd.org/kdd2025/",
+      "publisher": "ACM",
+      "keywords": ["data mining", "knowledge discovery", "machine learning", "big data"]
+    },
+    {
+      "name": "The Web Conference",
+      "short_name": "WWW",
+      "alias": ["WWW", "International World Wide Web Conference"],
+      "ccf_level": "A",
+      "category": "IR",
+      "homepage": "https://www2025.thewebconf.org/",
+      "publisher": "ACM",
+      "keywords": ["web", "information retrieval", "recommender systems", "social networks"]
+    },
+    {
+      "name": "International Conference on Learning Representations",
+      "short_name": "ICLR",
+      "alias": ["ICLR"],
+      "ccf_level": "A",
+      "category": "AI",
+      "homepage": "https://iclr.cc/",
+      "publisher": "OpenReview",
+      "keywords": ["deep learning", "representation learning", "generative models", "self-supervised learning"]
+    },
+    {
+      "name": "International Conference on Pattern Recognition",
+      "short_name": "ICPR",
+      "alias": ["ICPR"],
+      "ccf_level": "C",
+      "category": "CV",
+      "homepage": "https://icpr2025.org/",
+      "publisher": "IAPR",
+      "keywords": ["pattern recognition", "image analysis", "computer vision", "document analysis"]
+    },
+    {
+      "name": "ACM SIGIR Conference on Information Retrieval",
+      "short_name": "SIGIR",
+      "alias": ["SIGIR"],
+      "ccf_level": "A",
+      "category": "IR",
+      "homepage": "https://sigir2025.github.io/",
+      "publisher": "ACM",
+      "keywords": ["information retrieval", "search", "recommender systems", "IR theory"]
+    },
+    {
+      "name": "Conference on Uncertainty in Artificial Intelligence",
+      "short_name": "UAI",
+      "alias": ["UAI"],
+      "ccf_level": "B",
+      "category": "AI",
+      "homepage": "https://auai.org/uai2025/",
+      "publisher": "AUAI",
+      "keywords": ["uncertainty", "probabilistic models", "bayesian methods", "causal inference"]
+    },
+    {
+      "name": "International Conference on Artificial Intelligence and Statistics",
+      "short_name": "AISTATS",
+      "alias": ["AISTATS"],
+      "ccf_level": "B",
+      "category": "AI",
+      "homepage": "https://aistats.org/aistats2025/",
+      "publisher": "PMLR",
+      "keywords": ["machine learning", "statistics", "artificial intelligence", "optimization"]
+    }
+  ]
+}

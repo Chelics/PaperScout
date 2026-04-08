@@ -17,4 +17,4 @@ dependencies = [
 paperscout = "paperscout.cli:cli"
 
 [tool.setuptools.package-data]
-paperscout = ["prompts/*.md", "skills/*/SKILL.md"]
+paperscout = ["prompts/*.md", "skills/*/SKILL.md", "data/*.json"]

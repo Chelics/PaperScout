@@ -4,6 +4,7 @@ import json
 import os
 import random
 import time
+from typing import Any
 
 import arxiv as arxiv_lib
 
@@ -101,6 +102,18 @@ def _sleep_backoff(attempt: int, base_seconds: float) -> None:
     time.sleep(delay)
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    val = raw.strip().lower()
+    if val in {"1", "true", "yes", "y", "on"}:
+        return True
+    if val in {"0", "false", "no", "n", "off"}:
+        return False
+    return default
+
+
 def _execute(tool_input: dict) -> str:
     query = tool_input["query"]
     max_results = tool_input.get("max_results", 10)
@@ -108,6 +121,15 @@ def _execute(tool_input: dict) -> str:
 
     max_retries = _env_int("PAPERSCOUT_ARXIV_MAX_RETRIES", 2)
     backoff_base_seconds = _env_float("PAPERSCOUT_ARXIV_BACKOFF_BASE_SECONDS", 0.5)
+    venue_hints_enabled = _env_bool("PAPERSCOUT_VENUE_HINTS", False)
+
+    _venue_match: Any = None
+    if venue_hints_enabled:
+        try:
+            from paperscout.venues import match_paper_venues
+            _venue_match = match_paper_venues
+        except Exception:
+            pass
 
     last_error: Exception | None = None
     for attempt in range(max_retries + 1):
@@ -120,7 +142,7 @@ def _execute(tool_input: dict) -> str:
             )
             results = []
             for paper in client.results(search):
-                results.append({
+                paper_dict = {
                     "title": paper.title,
                     "authors": [a.name for a in paper.authors[:5]],
                     "published": paper.published.strftime("%Y-%m-%d"),
@@ -129,7 +151,15 @@ def _execute(tool_input: dict) -> str:
                     "abstract": paper.summary[:800],
                     "primary_category": paper.primary_category,
                     "categories": paper.categories[:3],
-                })
+                }
+                if _venue_match is not None:
+                    matched = _venue_match(paper.title, paper.summary[:800])
+                    if matched:
+                        paper_dict["venue_hints"] = [
+                            {"short_name": v.short_name, "ccf_level": v.ccf_level}
+                            for v in matched
+                        ]
+                results.append(paper_dict)
 
             if not results:
                 return json.dumps({
