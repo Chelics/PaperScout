@@ -51,6 +51,8 @@ _SORT_MAP = {
 }
 
 
+_arxiv_result_cache: dict[str, tuple[list[dict], int | None]] = {}
+
 def _env_int(name: str, default: int) -> int:
     raw = os.environ.get(name)
     if raw is None:
@@ -114,6 +116,28 @@ def _env_bool(name: str, default: bool) -> bool:
     return default
 
 
+def _inject_venue_hints(paper_dict: dict, venue_match: Any) -> None:
+    matched = venue_match(paper_dict["title"], paper_dict["abstract"])
+    if matched:
+        paper_dict["venue_hints"] = [
+            {"short_name": v.short_name, "ccf_level": v.ccf_level}
+            for v in matched
+        ]
+
+
+def _cache_key(query: str, sort_by: str) -> str:
+    return f"{query.strip()}::{sort_by}"
+
+
+def _prepare_output_results(base_results: list[dict], venue_match: Any, max_results: int) -> list[dict]:
+    sliced = base_results[:max_results]
+    out: list[dict] = [dict(p) for p in sliced]
+    if venue_match is not None:
+        for paper_dict in out:
+            _inject_venue_hints(paper_dict, venue_match)
+    return out
+
+
 def _execute(tool_input: dict) -> str:
     query = tool_input["query"]
     max_results = tool_input.get("max_results", 10)
@@ -122,6 +146,7 @@ def _execute(tool_input: dict) -> str:
     max_retries = _env_int("PAPERSCOUT_ARXIV_MAX_RETRIES", 2)
     backoff_base_seconds = _env_float("PAPERSCOUT_ARXIV_BACKOFF_BASE_SECONDS", 0.5)
     venue_hints_enabled = _env_bool("PAPERSCOUT_VENUE_HINTS", False)
+    cache_enabled = _env_bool("PAPERSCOUT_CACHE_REQUESTS", True)
 
     _venue_match: Any = None
     if venue_hints_enabled:
@@ -130,6 +155,16 @@ def _execute(tool_input: dict) -> str:
             _venue_match = match_paper_venues
         except Exception:
             pass
+
+    key = _cache_key(query, sort_by)
+    if cache_enabled and key in _arxiv_result_cache:
+        cached_results, cached_total = _arxiv_result_cache[key]
+        cached_len = len(cached_results)
+        if cached_len == 0:
+            return json.dumps({"results": [], "total_found": 0, "message": "No papers found.", "cached": True})
+        if cached_len >= max_results:
+            out_results = _prepare_output_results(cached_results, _venue_match, max_results)
+            return json.dumps({"results": out_results, "total_found": cached_total if cached_total else cached_len, "cached": True})
 
     last_error: Exception | None = None
     for attempt in range(max_retries + 1):
@@ -152,22 +187,20 @@ def _execute(tool_input: dict) -> str:
                     "primary_category": paper.primary_category,
                     "categories": paper.categories[:3],
                 }
-                if _venue_match is not None:
-                    matched = _venue_match(paper.title, paper.summary[:800])
-                    if matched:
-                        paper_dict["venue_hints"] = [
-                            {"short_name": v.short_name, "ccf_level": v.ccf_level}
-                            for v in matched
-                        ]
                 results.append(paper_dict)
 
             if not results:
+                if cache_enabled:
+                    _arxiv_result_cache[key] = ([], None)
                 return json.dumps({
                     "results": [],
                     "message": f"No papers found for query: '{query}'. Try different keywords.",
                 })
 
-            return json.dumps({"results": results, "total_found": len(results)})
+            if cache_enabled:
+                _arxiv_result_cache[key] = (results, len(results))
+            out_results = _prepare_output_results(results, _venue_match, max_results)
+            return json.dumps({"results": out_results, "total_found": len(results)})
 
         except Exception as e:
             last_error = e

@@ -265,6 +265,15 @@ def run_agent(
                         })
                         try:
                             data = json.loads(result)
+                            if verbose and isinstance(data, dict):
+                                query = block.input.get("query", "")
+                                sort_by = block.input.get("sort_by", "relevance")
+                                results_count = len(data.get("results", []) or [])
+                                source = "cache-hit" if data.get("cached") is True else "network"
+                                click.echo(
+                                    f"[search] source={source} sort_by={sort_by} results={results_count} query={query!r}",
+                                    err=True,
+                                )
                             for paper in data.get("results", []):
                                 url = paper.get("arxiv_url", "")
                                 if url and url not in collected_papers:
