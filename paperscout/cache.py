@@ -32,34 +32,44 @@ def _get_conn() -> sqlite3.Connection:
         conn.execute("PRAGMA foreign_keys=ON")
         conn.execute("PRAGMA busy_timeout=30000")
         _init_schema(conn)
+        _migrate_schema(conn)
         _connection = conn
     return _connection
 
 
+_SCHEMA_SQL = Path(__file__).parent / "data" / "schema.sql"
+
+
 def _init_schema(conn: sqlite3.Connection) -> None:
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS search_cache (
-            cache_key    TEXT PRIMARY KEY,
-            result_ids   TEXT NOT NULL,
-            total_found  INTEGER,
-            fetched_at   INTEGER NOT NULL,
-            ttl_seconds  INTEGER NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS papers (
-            arxiv_id         TEXT PRIMARY KEY,
-            title            TEXT,
-            abstract         TEXT,
-            authors_json     TEXT,
-            published        TEXT,
-            updated          TEXT,
-            primary_category TEXT,
-            categories_json  TEXT,
-            fetched_at       INTEGER NOT NULL,
-            ttl_seconds      INTEGER NOT NULL
-        );
-        CREATE INDEX IF NOT EXISTS idx_papers_fetched_at ON papers(fetched_at);
-        CREATE INDEX IF NOT EXISTS idx_search_fetched_at ON search_cache(fetched_at);
-    """)
+    if _SCHEMA_SQL.exists():
+        with open(_SCHEMA_SQL, encoding="utf-8") as f:
+            conn.executescript(f.read())
+    else:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS search_cache (
+                cache_key    TEXT PRIMARY KEY,
+                result_ids   TEXT NOT NULL,
+                total_found  INTEGER,
+                fetched_at   INTEGER NOT NULL,
+                ttl_seconds  INTEGER NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS papers (
+                arxiv_id         TEXT PRIMARY KEY,
+                title            TEXT,
+                abstract         TEXT,
+                authors_json     TEXT,
+                published        TEXT,
+                updated          TEXT,
+                primary_category TEXT,
+                categories_json  TEXT,
+                fetched_at       INTEGER NOT NULL,
+                ttl_seconds      INTEGER NOT NULL,
+                domain          TEXT DEFAULT '',
+                use_count      INTEGER DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS idx_papers_fetched_at ON papers(fetched_at);
+            CREATE INDEX IF NOT EXISTS idx_search_fetched_at ON search_cache(fetched_at);
+        """)
 
 
 @contextmanager
@@ -74,6 +84,51 @@ def _cursor():
         raise
     finally:
         cur.close()
+
+
+def _migrate_schema(conn: sqlite3.Connection) -> None:
+    cur = conn.cursor()
+    try:
+        cur.execute("PRAGMA table_info(papers)")
+        columns = {row[1] for row in cur.fetchall()}
+        if "domain" not in columns:
+            cur.execute("ALTER TABLE papers ADD COLUMN domain TEXT DEFAULT ''")
+        if "use_count" not in columns:
+            cur.execute("ALTER TABLE papers ADD COLUMN use_count INTEGER DEFAULT 0")
+
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='papers_notes'")
+        if not cur.fetchone():
+            conn.executescript("""
+                CREATE TABLE papers_notes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    arxiv_id TEXT NOT NULL,
+                    note_type TEXT NOT NULL CHECK(note_type IN ('llm', 'user')),
+                    content TEXT NOT NULL,
+                    domain TEXT DEFAULT '',
+                    created_at INTEGER NOT NULL,
+                    FOREIGN KEY (arxiv_id) REFERENCES papers(arxiv_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_notes_arxiv_id ON papers_notes(arxiv_id);
+                CREATE INDEX IF NOT EXISTS idx_notes_domain ON papers_notes(domain);
+            """)
+
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='memory_summaries'")
+        if not cur.fetchone():
+            conn.executescript("""
+                CREATE TABLE memory_summaries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_key TEXT NOT NULL,
+                    summary TEXT NOT NULL,
+                    from_turn INTEGER NOT NULL,
+                    to_turn INTEGER NOT NULL,
+                    created_at INTEGER NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_memory_session ON memory_summaries(session_key);
+            """)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def _is_expired(fetched_at: int, ttl_seconds: int) -> bool:
@@ -277,3 +332,176 @@ def purge_expired() -> int:
     except Exception:
         pass
     return total
+
+
+# ── Paper notes ───────────────────────────────────────────────────────────────
+
+def add_paper_note(arxiv_id: str, note_type: str, content: str, domain: str = "") -> None:
+    if not _ENABLE_DB:
+        return
+    if note_type not in ("llm", "user"):
+        return
+    try:
+        with _cursor() as cur:
+            cur.execute(
+                "INSERT INTO papers_notes (arxiv_id, note_type, content, domain, created_at) VALUES (?, ?, ?, ?, ?)",
+                (arxiv_id, note_type, content, domain, _now()),
+            )
+    except Exception:
+        pass
+
+
+def get_paper_notes(arxiv_id: str) -> list[dict[str, Any]]:
+    if not _ENABLE_DB:
+        return []
+    try:
+        with _cursor() as cur:
+            cur.execute(
+                "SELECT id, note_type, content, domain, created_at FROM papers_notes WHERE arxiv_id=? ORDER BY created_at DESC",
+                (arxiv_id,),
+            )
+            return [
+                {
+                    "id": row[0],
+                    "note_type": row[1],
+                    "content": row[2],
+                    "domain": row[3],
+                    "created_at": row[4],
+                }
+                for row in cur.fetchall()
+            ]
+    except Exception:
+        return []
+
+
+def get_notes_by_domain(domain: str) -> list[dict[str, Any]]:
+    if not _ENABLE_DB:
+        return []
+    try:
+        with _cursor() as cur:
+            cur.execute(
+                "SELECT arxiv_id, note_type, content, domain, created_at FROM papers_notes WHERE domain=? ORDER BY created_at DESC",
+                (domain,),
+            )
+            return [
+                {
+                    "arxiv_id": row[0],
+                    "note_type": row[1],
+                    "content": row[2],
+                    "domain": row[3],
+                    "created_at": row[4],
+                }
+                for row in cur.fetchall()
+            ]
+    except Exception:
+        return []
+
+
+def search_notes(keyword: str, domain: str = "") -> list[dict[str, Any]]:
+    if not _ENABLE_DB:
+        return []
+    try:
+        with _cursor() as cur:
+            if domain:
+                cur.execute(
+                    "SELECT arxiv_id, note_type, content, domain, created_at FROM papers_notes WHERE domain=? AND content LIKE ? ORDER BY created_at DESC",
+                    (domain, f"%{keyword}%"),
+                )
+            else:
+                cur.execute(
+                    "SELECT arxiv_id, note_type, content, domain, created_at FROM papers_notes WHERE content LIKE ? ORDER BY created_at DESC",
+                    (f"%{keyword}%",),
+                )
+            return [
+                {
+                    "arxiv_id": row[0],
+                    "note_type": row[1],
+                    "content": row[2],
+                    "domain": row[3],
+                    "created_at": row[4],
+                }
+                for row in cur.fetchall()
+            ]
+    except Exception:
+        return []
+
+
+# ── Memory summaries ───────────────────────────────────────────────────────────────
+
+def add_memory_summary(session_key: str, summary: str, from_turn: int, to_turn: int) -> None:
+    if not _ENABLE_DB:
+        return
+    try:
+        with _cursor() as cur:
+            cur.execute(
+                "INSERT INTO memory_summaries (session_key, summary, from_turn, to_turn, created_at) VALUES (?, ?, ?, ?, ?)",
+                (session_key, summary, from_turn, to_turn, _now()),
+            )
+    except Exception:
+        pass
+
+
+def get_memory_summary(session_key: str) -> str | None:
+    if not _ENABLE_DB:
+        return None
+    try:
+        with _cursor() as cur:
+            cur.execute(
+                "SELECT summary FROM memory_summaries WHERE session_key=? ORDER BY created_at DESC LIMIT 1",
+                (session_key,),
+            )
+            row = cur.fetchone()
+            return row[0] if row else None
+    except Exception:
+        return None
+
+
+def get_memory_history(session_key: str) -> list[dict[str, Any]]:
+    if not _ENABLE_DB:
+        return []
+    try:
+        with _cursor() as cur:
+            cur.execute(
+                "SELECT id, summary, from_turn, to_turn, created_at FROM memory_summaries WHERE session_key=? ORDER BY from_turn ASC",
+                (session_key,),
+            )
+            return [
+                {
+                    "id": row[0],
+                    "summary": row[1],
+                    "from_turn": row[2],
+                    "to_turn": row[3],
+                    "created_at": row[4],
+                }
+                for row in cur.fetchall()
+            ]
+    except Exception:
+        return []
+
+
+# ── Paper domain & use_count ──────────────────────────────────────────────────────────
+
+def update_paper_domain(arxiv_id: str, domain: str) -> None:
+    if not _ENABLE_DB:
+        return
+    try:
+        with _cursor() as cur:
+            cur.execute(
+                "UPDATE papers SET domain=? WHERE arxiv_id=?",
+                (domain, arxiv_id),
+            )
+    except Exception:
+        pass
+
+
+def increment_paper_use_count(arxiv_id: str) -> None:
+    if not _ENABLE_DB:
+        return
+    try:
+        with _cursor() as cur:
+            cur.execute(
+                "UPDATE papers SET use_count = use_count + 1 WHERE arxiv_id=?",
+                (arxiv_id,),
+            )
+    except Exception:
+        pass

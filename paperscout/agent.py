@@ -175,6 +175,7 @@ def run_agent(
     max_iterations: int | None = None,
     report_mode: str | None = None,
     mode: str | None = None,
+    domain: str | None = None,
 ) -> tuple:
     load_all()
 

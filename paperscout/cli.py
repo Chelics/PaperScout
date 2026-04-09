@@ -143,6 +143,12 @@ def cli():
     help="Search profile: survey emphasizes coverage and foundational work; trending emphasizes recency.",
 )
 @click.option(
+    "--domain",
+    default=os.environ.get("PAPERSCOUT_DOMAIN", ""),
+    show_default=True,
+    help="Domain category for organizing papers and notes (e.g., CV, NLP, ML).",
+)
+@click.option(
     "--verbose",
     is_flag=True,
     help="Show agent tool calls as they happen.",
@@ -156,6 +162,7 @@ def search(
     cost_summary: bool,
     report_mode: str,
     mode: str,
+    domain: str,
     verbose: bool,
 ):
     """Search arXiv for papers on TOPIC and generate a Markdown report."""
@@ -185,6 +192,7 @@ def search(
             max_iterations=max_iterations,
             report_mode=report_mode,
             mode=mode,
+            domain=domain,
         )
         report = normalize_report_markdown(report, report_mode=report_mode)
 
