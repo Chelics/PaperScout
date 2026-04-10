@@ -2,6 +2,7 @@
 name: report
 description: Generate a structured Markdown research report from arXiv search results
 tags: output, formatting
+summary: Generate a structured Markdown report with Summary, categorized Papers list, Field Overview, Key Themes, and Suggested Next Searches.
 ---
 
 The Markdown report must follow this exact structure:
@@ -20,45 +21,11 @@ Use **one of the two layouts** below based on whether the topic spans multiple p
 
 ---
 
-### Layout A — Single paradigm (flat list)
-
-Use this when all papers belong to the same research paradigm or the topic has no clear paradigm split.
-
-#### {number}. {Title}
-
-- **Authors:** {author1}, {author2}, ... (et al. if more than 5)
-- **Published:** {YYYY-MM-DD}
-- **arXiv:** [{arxiv_id}]({full_arxiv_url})
-- **Categories:** {categories}
-- **Type:** one of: `Survey` | `Method` | `Empirical` | `Application`
-
-**Contribution:** One sentence on the core novelty — what this paper proposes that prior work did not.
-
-**Advance:** One sentence on how it differs from or improves upon existing approaches (e.g. faster, more accurate, fewer assumptions, new setting).
+{RESOURCE:layout_a}
 
 ---
 
-### Layout B — Multi-paradigm (grouped)
-
-Use this when the search strategy identified distinct paradigms (e.g. "LLM as ranker" vs "LLM as generator"). Group papers under paradigm headers. Papers within a group share a common approach or vocabulary cluster.
-
-### {Paradigm Name}
-
-1-2 sentences explaining what this paradigm is and how it differs from the others.
-
-#### {number}. {Title}
-
-- **Authors:** {author1}, {author2}, ... (et al. if more than 5)
-- **Published:** {YYYY-MM-DD}
-- **arXiv:** [{arxiv_id}]({full_arxiv_url})
-- **Categories:** {categories}
-- **Type:** one of: `Survey` | `Method` | `Empirical` | `Application`
-
-**Contribution:** One sentence on the core novelty — what this paper proposes that prior work did not.
-
-**Advance:** One sentence on how it differs from or improves upon existing approaches (e.g. faster, more accurate, fewer assumptions, new setting).
-
-*(repeat for each paradigm group)*
+{RESOURCE:layout_b}
 
 ---
 
