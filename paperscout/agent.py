@@ -214,6 +214,7 @@ def run_agent(
     iterations = 0
     arxiv_calls: list[dict] = []
     enforcements_sent: set[str] = set()
+    failed_queries: list[dict] = []
 
     for _ in range(max_iterations):
         _micro_compact_messages(messages)
@@ -275,6 +276,14 @@ def run_agent(
                                     f"[search] source={source} sort_by={sort_by} results={results_count} query={query!r}",
                                     err=True,
                                 )
+                            # Track failed queries (0 results)
+                            results_count = len(data.get("results", []) or [])
+                            if results_count == 0:
+                                failed_queries.append({
+                                    "query": block.input.get("query"),
+                                    "sort_by": block.input.get("sort_by", "relevance"),
+                                    "message": data.get("message") if isinstance(data, dict) else "",
+                                })
                             for paper in data.get("results", []):
                                 url = paper.get("arxiv_url", "")
                                 if url and url not in collected_papers:
@@ -310,6 +319,24 @@ def run_agent(
                         "`ti:denoising diffusion probabilistic model` OR `abs:score-based generative model` OR `ti:latent diffusion`."
                     )
                     enforcements_sent.add("survey_foundational_diffusion")
+
+            # 失败反思 enforcement: 当 search_arxiv 返回 0 篇时强制 LLM 反思
+            if failed_queries:
+                last_fail = failed_queries[-1]
+                fail_key = f"fail:{last_fail['query']}"
+                if fail_key not in enforcements_sent:
+                    consecutive_zeros = len(failed_queries[-3:])
+                    urgency = "立即" if consecutive_zeros >= 2 else ""
+                    enforcement_lines.append(
+                        f"[{urgency}反思要求] 上一次查询 '{last_fail['query']}' 返回了 0 篇结果。\n"
+                        "请先分析失败原因（ti: 条件是否太苛刻？关键词拼写是否正确？），\n"
+                        "然后用更宽松的策略重新搜索：\n"
+                        "  - 把 ti: 改为 abs:，扩大搜索范围\n"
+                        "  - 减少 AND 条件，避免多个严格匹配叠加\n"
+                        "  - 或使用 OR 逻辑\n"
+                        "不要用相同或高度相似的 query 重复搜索。"
+                    )
+                    enforcements_sent.add(fail_key)
 
             if enforcement_lines:
                 messages.append({"role": "user", "content": "\n".join(enforcement_lines)})
